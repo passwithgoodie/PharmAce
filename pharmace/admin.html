@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <title>PharmAce – Admin</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .admin-header { padding: 1.25rem 1.25rem 0.75rem; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); }
+    .admin-logo { font-family: 'Playfair Display', serif; font-size: 18px; font-style: italic; color: var(--gold); }
+    .admin-badge { font-size: 10px; font-weight: 700; background: rgba(201,168,76,0.15); color: var(--gold); border: 1px solid rgba(201,168,76,0.3); border-radius: 20px; padding: 2px 9px; letter-spacing: 0.06em; }
+
+    .admin-tabs { display: flex; border-bottom: 1px solid var(--border); }
+    .admin-tab { flex: 1; text-align: center; padding: 10px 8px; font-size: 13px; font-weight: 500; color: var(--text3); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; }
+    .admin-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+    .tab-panel { display: none; padding: 1.25rem; }
+    .tab-panel.active { display: block; }
+
+    /* GENERATE */
+    .gen-tip { background: rgba(201,168,76,0.06); border: 1px solid rgba(201,168,76,0.2); border-radius: var(--radius-sm); padding: 0.75rem 1rem; margin-bottom: 1.25rem; font-size: 13px; color: var(--text2); line-height: 1.5; }
+    .gen-tip strong { color: var(--gold); }
+    .loading-bar { height: 3px; background: var(--border); border-radius: 2px; margin: 1rem 0; overflow: hidden; display: none; }
+    .loading-bar.active { display: block; }
+    .loading-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--gold), var(--gold2)); border-radius: 2px; transition: width 0.3s ease; }
+    .status { font-size: 13px; color: var(--text2); font-style: italic; min-height: 20px; margin-bottom: 0.5rem; }
+
+    /* Q CARDS */
+    .q-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.1rem; margin-bottom: 10px; }
+    .q-card.approved { border-color: rgba(76,175,125,0.5); }
+    .q-card.rejected { opacity: 0.35; border-style: dashed; }
+    .q-card-head { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 0.75rem; }
+    .q-stem { font-family: 'Playfair Display', serif; font-size: 14px; line-height: 1.6; color: var(--text); margin-bottom: 0.75rem; }
+    .q-opts { list-style: none; display: flex; flex-direction: column; gap: 5px; margin-bottom: 0.75rem; }
+    .q-opts li { font-size: 12px; color: var(--text2); padding: 5px 9px; border-radius: 6px; border: 1px solid var(--border); display: flex; gap: 7px; }
+    .q-opts li.correct { border-color: rgba(76,175,125,0.4); color: var(--green); background: rgba(76,175,125,0.06); }
+    .q-exp { font-size: 12px; color: var(--text3); line-height: 1.55; background: var(--bg3); padding: 8px 10px; border-radius: 6px; margin-bottom: 0.75rem; border-left: 2px solid rgba(201,168,76,0.4); }
+    .q-ref { font-size: 11px; color: var(--text3); font-style: italic; margin-bottom: 0.75rem; }
+    .q-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    /* BANK */
+    .bank-empty { text-align: center; padding: 3rem 1rem; color: var(--text3); font-size: 14px; }
+    .bank-empty .icon { font-size: 2.5rem; display: block; margin-bottom: 0.75rem; }
+    .filter-row { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 1rem; padding-bottom: 4px; scrollbar-width: none; }
+    .filter-row::-webkit-scrollbar { display: none; }
+
+    /* STATS */
+    .admin-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 1.5rem; }
+    .admin-stat { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 1rem; }
+    .admin-stat-val { font-family: 'Playfair Display', serif; font-size: 2rem; color: var(--text); display: block; }
+    .admin-stat-label { font-size: 12px; color: var(--text3); }
+
+    /* EDIT */
+    .edit-box { border: 1px solid var(--gold); border-radius: var(--radius-sm); padding: 8px 10px; font-size: 13px; font-family: 'Outfit', sans-serif; background: var(--bg3); color: var(--text); width: 100%; resize: vertical; min-height: 60px; line-height: 1.5; margin: 6px 0; }
+  </style>
+</head>
+<body>
+
+<div class="admin-header">
+  <a href="index.html" style="color:var(--text2);font-size:18px;text-decoration:none;">←</a>
+  <div class="admin-logo">PharmAce</div>
+  <div class="admin-badge">ADMIN</div>
+</div>
+
+<div class="admin-tabs">
+  <div class="admin-tab active" onclick="switchTab('generate')">Generate</div>
+  <div class="admin-tab" onclick="switchTab('review')">Review <span id="pending-count"></span></div>
+  <div class="admin-tab" onclick="switchTab('bank')">Bank</div>
+  <div class="admin-tab" onclick="switchTab('stats')">Stats</div>
+</div>
+
+<!-- GENERATE TAB -->
+<div class="tab-panel active" id="tab-generate">
+  <div class="gen-tip">💡 <strong>How it works:</strong> Paste any guideline, drug monograph, or your lecture notes below. Claude will draft PEBC-style MCQs for you to review, edit, and approve.</div>
+
+  <div class="form-group">
+    <label>Source material (optional)</label>
+    <textarea id="source-text" placeholder="Paste a section from Diabetes Canada 2023 guidelines, a drug monograph, or your lecture notes...&#10;&#10;Or leave empty and Claude will generate from its own knowledge."></textarea>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+    <div class="form-group">
+      <label>Topic</label>
+      <select id="gen-topic">
+        <option>Cardiology</option>
+        <option>Endocrinology</option>
+        <option>Infectious disease</option>
+        <option>Psychiatry</option>
+        <option>Nephrology</option>
+        <option>Respirology</option>
+        <option>Neurology</option>
+        <option>Gastroenterology</option>
+        <option>Pharmacokinetics</option>
+        <option>Jurisprudence</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Difficulty</label>
+      <select id="gen-diff">
+        <option>Introductory</option>
+        <option selected>Intermediate</option>
+        <option>Advanced</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label>Number of questions</label>
+    <select id="gen-count">
+      <option value="3">3 questions (quick)</option>
+      <option value="5" selected>5 questions</option>
+      <option value="8">8 questions</option>
+      <option value="10">10 questions</option>
+    </select>
+  </div>
+
+  <button class="btn btn-gold" id="gen-btn" onclick="generateQuestions()">✨ Generate with AI</button>
+  <div class="loading-bar" id="loading-bar"><div class="loading-fill" id="loading-fill"></div></div>
+  <p class="status" id="gen-status"></p>
+  <div id="preview-area"></div>
+</div>
+
+<!-- REVIEW TAB -->
+<div class="tab-panel" id="tab-review">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+    <h3 style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--text);">Pending review</h3>
+    <button class="btn btn-sm btn-gold" onclick="approveAll()">Approve all</button>
+  </div>
+  <div id="review-area">
+    <div class="bank-empty"><span class="icon">📋</span>No questions pending.<br>Generate some first.</div>
+  </div>
+</div>
+
+<!-- BANK TAB -->
+<div class="tab-panel" id="tab-bank">
+  <div class="filter-row" id="bank-filter"></div>
+  <div id="bank-area">
+    <div class="bank-empty"><span class="icon">🗄️</span>Your question bank is empty.<br>Approve questions to add them here.</div>
+  </div>
+</div>
+
+<!-- STATS TAB -->
+<div class="tab-panel" id="tab-stats">
+  <div class="admin-stats">
+    <div class="admin-stat"><span class="admin-stat-val" id="s-total">0</span><div class="admin-stat-label">Approved questions</div></div>
+    <div class="admin-stat"><span class="admin-stat-val" id="s-rejected">0</span><div class="admin-stat-label">Rejected</div></div>
+    <div class="admin-stat"><span class="admin-stat-val" id="s-topics">0</span><div class="admin-stat-label">Topics covered</div></div>
+    <div class="admin-stat"><span class="admin-stat-val" id="s-pending">0</span><div class="admin-stat-label">Pending review</div></div>
+  </div>
+
+  <h3 style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--text);margin-bottom:0.75rem;">Questions by topic</h3>
+  <div id="topic-breakdown"></div>
+</div>
+
+<script src="js/app.js"></script>
+<script>
+let pendingQs = [];
+let approvedQs = [];
+let rejectedCount = 0;
+
+function switchTab(tab) {
+  document.querySelectorAll('.admin-tab').forEach((t,i) => {
+    t.classList.toggle('active', ['generate','review','bank','stats'][i] === tab);
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  if (tab === 'review') renderReview();
+  if (tab === 'bank') renderBank();
+  if (tab === 'stats') renderStats();
+}
+
+async function generateQuestions() {
+  const source = document.getElementById('source-text').value.trim();
+  const topic = document.getElementById('gen-topic').value;
+  const diff = document.getElementById('gen-diff').value;
+  const count = document.getElementById('gen-count').value;
+  const btn = document.getElementById('gen-btn');
+  const bar = document.getElementById('loading-bar');
+  const fill = document.getElementById('loading-fill');
+  const status = document.getElementById('gen-status');
+  const preview = document.getElementById('preview-area');
+
+  btn.disabled = true;
+  bar.classList.add('active');
+  preview.innerHTML = '';
+  status.textContent = 'Sending to Claude AI...';
+
+  let prog = 0;
+  const tick = setInterval(() => { prog = Math.min(prog + Math.random()*10, 88); fill.style.width = prog+'%'; }, 400);
+
+  const sys = `You are a Canadian pharmacy educator creating PEBC-style MCQ questions. Generate exactly ${count} high-quality multiple choice questions.
+
+Return ONLY a valid JSON array. No markdown, no preamble, no backticks. Each object must have:
+- "question": string (clinical vignette, 1-3 sentences, Canadian context)
+- "options": array of exactly 4 strings
+- "correct": integer 0-3 (index of correct answer)
+- "explanation": string (2-3 sentences, explain correct answer and why main distractor is wrong)
+- "ref": string (Canadian guideline or reference)
+- "topic": "${topic}"
+- "difficulty": "${diff}"`;
+
+  const user = source
+    ? `Source:\n\n${source}\n\nGenerate ${count} ${diff.toLowerCase()} ${topic} MCQs based on this.`
+    : `Generate ${count} ${diff.toLowerCase()} ${topic} MCQs for PEBC exam preparation.`;
+
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: sys,
+        messages: [{ role: 'user', content: user }]
+      })
+    });
+    clearInterval(tick); fill.style.width = '100%';
+    const data = await r.json();
+    const raw = data.content[0].text.replace(/```json|```/g,'').trim();
+    const qs = JSON.parse(raw);
+    const stamped = qs.map((q,i) => ({...q, id: Date.now()+i, status:'pending'}));
+    pendingQs = [...pendingQs, ...stamped];
+    status.textContent = `✓ ${qs.length} questions generated — review below or in the Review tab.`;
+    preview.innerHTML = '<div class="divider"></div>';
+    stamped.forEach(q => preview.appendChild(buildCard(q, true)));
+    updatePendingBadge();
+  } catch(e) {
+    clearInterval(tick);
+    status.textContent = '⚠ Error generating. Check your connection and try again.';
+  }
+  btn.disabled = false;
+  setTimeout(() => { bar.classList.remove('active'); fill.style.width='0%'; }, 800);
+}
+
+function buildCard(q, showActions) {
+  const div = document.createElement('div');
+  div.className = 'q-card' + (q.status==='approved'?' approved':q.status==='rejected'?' rejected':'');
+  div.id = 'qc-'+q.id;
+  const letters = ['A','B','C','D'];
+  const optsHtml = q.options.map((o,i) => `<li class="${i===q.correct?'correct':''}">${letters[i]}. ${o}</li>`).join('');
+  const statusBadge = q.status==='approved' ? '<span class="badge badge-green">Approved</span>' :
+                      q.status==='rejected' ? '<span class="badge badge-red">Rejected</span>' : '';
+  const actHtml = showActions && q.status==='pending' ? `
+    <div class="q-actions" id="qa-${q.id}">
+      <button class="btn btn-sm" style="background:rgba(76,175,125,0.15);color:var(--green);border-color:rgba(76,175,125,0.3);" onclick="approveQ(${q.id})">✓ Approve</button>
+      <button class="btn btn-sm btn-ghost" onclick="editQ(${q.id})">✏ Edit</button>
+      <button class="btn btn-sm" style="background:rgba(224,82,82,0.1);color:var(--red);border-color:rgba(224,82,82,0.3);" onclick="rejectQ(${q.id})">✕ Reject</button>
+    </div>` : '';
+  div.innerHTML = `
+    <div class="q-card-head">
+      <span class="badge badge-gold">${q.topic}</span>
+      <span class="badge badge-blue">${q.difficulty}</span>
+      ${statusBadge}
+    </div>
+    <p class="q-stem">${q.question}</p>
+    <ul class="q-opts">${optsHtml}</ul>
+    <div class="q-exp">${q.explanation}</div>
+    <p class="q-ref">📖 ${q.ref}</p>
+    ${actHtml}
+    <div id="edit-${q.id}"></div>`;
+  return div;
+}
+
+function approveQ(id) {
+  const q = pendingQs.find(q=>q.id===id);
+  if (!q) return;
+  q.status = 'approved';
+  approvedQs.push(q);
+  refreshCard(id, q);
+  updatePendingBadge();
+}
+
+function rejectQ(id) {
+  const q = pendingQs.find(q=>q.id===id);
+  if (!q) return;
+  q.status = 'rejected';
+  rejectedCount++;
+  refreshCard(id, q);
+  updatePendingBadge();
+}
+
+function refreshCard(id, q) {
+  const el = document.getElementById('qc-'+id);
+  if (el) { el.className = 'q-card'+(q.status==='approved'?' approved':' rejected'); const a=document.getElementById('qa-'+id); if(a) a.outerHTML=''; }
+}
+
+function editQ(id) {
+  const q = pendingQs.find(q=>q.id===id);
+  if (!q) return;
+  const el = document.getElementById('edit-'+id);
+  if (el.innerHTML) { el.innerHTML=''; return; }
+  el.innerHTML = `
+    <div class="divider"></div>
+    <label style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;">Edit question</label>
+    <textarea class="edit-box" id="et-${id}">${q.question}</textarea>
+    <label style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;">Edit explanation</label>
+    <textarea class="edit-box" id="ee-${id}">${q.explanation}</textarea>
+    <div style="display:flex;gap:8px;margin-top:6px;">
+      <button class="btn btn-sm btn-gold" onclick="saveEdit(${id})">Save</button>
+      <button class="btn btn-sm btn-ghost" onclick="document.getElementById('edit-${id}').innerHTML=''">Cancel</button>
+    </div>`;
+}
+
+function saveEdit(id) {
+  const q = pendingQs.find(q=>q.id===id);
+  if (!q) return;
+  q.question = document.getElementById('et-'+id).value;
+  q.explanation = document.getElementById('ee-'+id).value;
+  const card = document.getElementById('qc-'+id);
+  if (card) { card.querySelector('.q-stem').textContent=q.question; card.querySelector('.q-exp').textContent=q.explanation; document.getElementById('edit-'+id).innerHTML=''; }
+}
+
+function approveAll() {
+  pendingQs.filter(q=>q.status==='pending').forEach(q=>{ q.status='approved'; approvedQs.push(q); });
+  updatePendingBadge();
+  renderReview();
+}
+
+function renderReview() {
+  const area = document.getElementById('review-area');
+  const pending = pendingQs.filter(q=>q.status==='pending');
+  if (!pending.length) { area.innerHTML='<div class="bank-empty"><span class="icon">📋</span>No questions pending.<br>Generate some first.</div>'; return; }
+  area.innerHTML='';
+  pending.forEach(q=>area.appendChild(buildCard(q,true)));
+}
+
+function renderBank() {
+  const area = document.getElementById('bank-area');
+  const filter = document.getElementById('bank-filter');
+  const topics = [...new Set(approvedQs.map(q=>q.topic))];
+  filter.innerHTML = '<button class="chip active" onclick="filterBank(\'all\',this)">All</button>' +
+    topics.map(t=>`<button class="chip" onclick="filterBank('${t}',this)">${t}</button>`).join('');
+  if (!approvedQs.length) { area.innerHTML='<div class="bank-empty"><span class="icon">🗄️</span>Your bank is empty.<br>Approve questions to add them.</div>'; return; }
+  area.innerHTML='';
+  approvedQs.forEach(q=>area.appendChild(buildCard(q,false)));
+}
+
+function filterBank(topic, el) {
+  document.querySelectorAll('#bank-filter .chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  const area = document.getElementById('bank-area');
+  area.innerHTML='';
+  const qs = topic==='all' ? approvedQs : approvedQs.filter(q=>q.topic===topic);
+  if (!qs.length) { area.innerHTML='<div class="bank-empty" style="padding:2rem;"><span>No questions yet for this topic.</span></div>'; return; }
+  qs.forEach(q=>area.appendChild(buildCard(q,false)));
+}
+
+function renderStats() {
+  document.getElementById('s-total').textContent = approvedQs.length;
+  document.getElementById('s-rejected').textContent = rejectedCount;
+  document.getElementById('s-pending').textContent = pendingQs.filter(q=>q.status==='pending').length;
+  const topics = [...new Set(approvedQs.map(q=>q.topic))];
+  document.getElementById('s-topics').textContent = topics.length;
+  const breakdown = document.getElementById('topic-breakdown');
+  if (!topics.length) { breakdown.innerHTML='<p style="color:var(--text3);font-size:13px;">No data yet.</p>'; return; }
+  breakdown.innerHTML = topics.map(t => {
+    const count = approvedQs.filter(q=>q.topic===t).length;
+    const pct = Math.round((count/approvedQs.length)*100);
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+      <span style="font-size:13px;color:var(--text);flex:1;">${t}</span>
+      <div style="width:80px;height:4px;background:var(--border);border-radius:2px;"><div style="width:${pct}%;height:100%;background:var(--gold);border-radius:2px;"></div></div>
+      <span style="font-size:13px;font-weight:600;color:var(--gold);width:30px;text-align:right;">${count}</span>
+    </div>`;
+  }).join('');
+}
+
+function updatePendingBadge() {
+  const c = pendingQs.filter(q=>q.status==='pending').length;
+  document.getElementById('pending-count').textContent = c ? `(${c})` : '';
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="PharmAce" />
+  <meta name="description" content="Canada's smartest PEBC exam prep platform. AI-powered MCQs, mock exams, and video lectures." />
+  <title>PharmAce – PEBC Exam Prep</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    /* LANDING PAGE SPECIFIC */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 0 1.25rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -120px; right: -80px;
+      width: 320px; height: 320px;
+      background: radial-gradient(circle, rgba(201,168,76,0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero::after {
+      content: '';
+      position: absolute;
+      bottom: 80px; left: -100px;
+      width: 260px; height: 260px;
+      background: radial-gradient(circle, rgba(74,144,217,0.07) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.5rem 0 0;
+    }
+    .hero-logo { font-family: 'Playfair Display', serif; font-size: 22px; font-style: italic; color: var(--gold); }
+    .hero-login { font-size: 13px; font-weight: 500; color: var(--text2); cursor: pointer; padding: 6px 14px; border: 1px solid var(--border); border-radius: 20px; text-decoration: none; }
+    .hero-body { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 2rem 0; }
+    .hero-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; color: var(--gold); text-transform: uppercase; margin-bottom: 1rem; }
+    .hero-title { font-family: 'Playfair Display', serif; font-size: 2.6rem; line-height: 1.15; color: var(--text); margin-bottom: 0.5rem; }
+    .hero-title em { font-style: italic; color: var(--gold); }
+    .hero-sub { font-size: 15px; color: var(--text2); line-height: 1.65; margin-bottom: 2rem; max-width: 340px; }
+    .hero-ctas { display: flex; flex-direction: column; gap: 10px; margin-bottom: 2.5rem; }
+    .trust-row { display: flex; align-items: center; gap: 12px; }
+    .trust-avatars { display: flex; }
+    .trust-avatar {
+      width: 28px; height: 28px; border-radius: 50%;
+      border: 2px solid var(--bg);
+      background: linear-gradient(135deg, var(--gold), var(--gold2));
+      margin-left: -8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 600; color: #0a0a0a;
+    }
+    .trust-avatar:first-child { margin-left: 0; }
+    .trust-text { font-size: 12px; color: var(--text3); }
+    .trust-text strong { color: var(--text2); }
+
+    .features-section { padding: 2.5rem 1.25rem; }
+    .section-label { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; color: var(--gold); text-transform: uppercase; margin-bottom: 0.5rem; }
+    .section-title { font-family: 'Playfair Display', serif; font-size: 1.75rem; color: var(--text); margin-bottom: 1.5rem; line-height: 1.25; }
+    .feature-list { display: flex; flex-direction: column; gap: 12px; }
+    .feature-item { display: flex; gap: 14px; align-items: flex-start; padding: 1rem; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); }
+    .feature-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+    .feature-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+    .feature-desc { font-size: 13px; color: var(--text3); line-height: 1.5; }
+
+    .pricing-section { padding: 2.5rem 1.25rem; }
+    .plan-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 12px;
+      position: relative;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .plan-card.featured { border-color: var(--gold); }
+    .plan-card:hover { border-color: var(--border2); }
+    .plan-card.featured:hover { border-color: var(--gold2); }
+    .plan-popular { position: absolute; top: -11px; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, var(--gold), var(--gold2)); color: #0a0a0a; font-size: 10px; font-weight: 700; padding: 3px 14px; border-radius: 20px; white-space: nowrap; letter-spacing: 0.05em; }
+    .plan-name { font-size: 13px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+    .plan-price { font-family: 'Playfair Display', serif; font-size: 2.2rem; color: var(--text); margin-bottom: 2px; }
+    .plan-price span { font-size: 14px; font-family: 'Outfit', sans-serif; color: var(--text3); }
+    .plan-desc { font-size: 13px; color: var(--text3); margin-bottom: 1rem; }
+    .plan-features { list-style: none; display: flex; flex-direction: column; gap: 7px; }
+    .plan-features li { font-size: 13px; color: var(--text2); display: flex; gap: 8px; align-items: flex-start; line-height: 1.4; }
+    .plan-features li .check { color: var(--green); flex-shrink: 0; margin-top: 1px; }
+
+    .cta-section { padding: 2.5rem 1.25rem 3rem; text-align: center; }
+    .cta-title { font-family: 'Playfair Display', serif; font-size: 1.8rem; color: var(--text); margin-bottom: 0.75rem; }
+    .cta-sub { font-size: 14px; color: var(--text2); margin-bottom: 1.5rem; }
+
+    .footer { padding: 1.5rem 1.25rem 2rem; border-top: 1px solid var(--border); text-align: center; }
+    .footer p { font-size: 12px; color: var(--text3); }
+
+    /* SIGNUP MODAL */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 200;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius) var(--radius) 0 0;
+      padding: 1.5rem 1.25rem 2.5rem;
+      width: 100%;
+      max-width: 480px;
+      animation: slideUp 0.3s ease;
+    }
+    @keyframes slideUp { from { transform: translateY(60px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .modal-handle { width: 36px; height: 3px; background: var(--border2); border-radius: 2px; margin: 0 auto 1.5rem; }
+    .modal-title { font-family: 'Playfair Display', serif; font-size: 1.4rem; margin-bottom: 0.25rem; }
+    .modal-sub { font-size: 13px; color: var(--text2); margin-bottom: 1.5rem; }
+    .modal-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 1.25rem; }
+    .modal-tab { flex: 1; text-align: center; padding: 8px; font-size: 14px; font-weight: 500; color: var(--text3); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; }
+    .modal-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+    .modal-form { display: none; }
+    .modal-form.active { display: block; }
+    .modal-footer { text-align: center; margin-top: 1rem; font-size: 12px; color: var(--text3); }
+  </style>
+</head>
+<body>
+
+<!-- LANDING PAGE -->
+<div class="hero">
+  <nav class="hero-nav">
+    <div class="hero-logo">PharmAce</div>
+    <a class="hero-login" onclick="openModal('login')">Sign in</a>
+  </nav>
+
+  <div class="hero-body">
+    <div class="hero-eyebrow">🇨🇦 PEBC Exam Prep</div>
+    <h1 class="hero-title">Pass your<br/><em>PEBC</em><br/>first try.</h1>
+    <p class="hero-sub">AI-powered MCQs, mock exams, and video lectures — built specifically for Canadian pharmacy licensing.</p>
+    <div class="hero-ctas">
+      <button class="btn btn-gold" onclick="openModal('signup')">Start free — no credit card</button>
+      <a class="btn btn-outline" href="quiz.html">Try a sample quiz →</a>
+    </div>
+    <div class="trust-row">
+      <div class="trust-avatars">
+        <div class="trust-avatar">S</div>
+        <div class="trust-avatar">R</div>
+        <div class="trust-avatar">M</div>
+        <div class="trust-avatar">A</div>
+      </div>
+      <p class="trust-text"><strong>200+ pharmacists</strong> already preparing</p>
+    </div>
+  </div>
+</div>
+
+<!-- FEATURES -->
+<section class="features-section">
+  <div class="section-label">Why PharmAce</div>
+  <h2 class="section-title">Everything you need to pass</h2>
+  <div class="feature-list">
+    <div class="feature-item">
+      <div class="feature-icon" style="background:rgba(201,168,76,0.1);">🧠</div>
+      <div>
+        <div class="feature-title">AI-Generated MCQs</div>
+        <div class="feature-desc">Thousands of PEBC-style questions written from Canadian guidelines — reviewed by licensed pharmacists.</div>
+      </div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon" style="background:rgba(76,175,125,0.1);">📋</div>
+      <div>
+        <div class="feature-title">Full Mock Exams</div>
+        <div class="feature-desc">Timed, scored, and structured exactly like the real PEBC EE and QE exams.</div>
+      </div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon" style="background:rgba(74,144,217,0.1);">📹</div>
+      <div>
+        <div class="feature-title">Video Lectures</div>
+        <div class="feature-desc">Short, focused videos on every high-yield topic — watch on your phone, anytime.</div>
+      </div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon" style="background:rgba(201,168,76,0.08);">📊</div>
+      <div>
+        <div class="feature-title">Progress Tracking</div>
+        <div class="feature-desc">See exactly which topics need work. Your personal weak-area dashboard keeps you focused.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="pricing-section">
+  <div class="section-label">Pricing</div>
+  <h2 class="section-title">Simple, honest pricing</h2>
+
+  <div class="plan-card" onclick="openModal('signup')">
+    <div class="plan-name">Free</div>
+    <div class="plan-price">$0 <span>forever</span></div>
+    <div class="plan-desc">Get started, no risk.</div>
+    <ul class="plan-features">
+      <li><span class="check">✓</span> 10 practice questions/day</li>
+      <li><span class="check">✓</span> Basic explanations</li>
+      <li><span class="check">✓</span> Progress tracking</li>
+    </ul>
+  </div>
+
+  <div class="plan-card featured" onclick="openModal('signup')">
+    <div class="plan-popular">Most popular</div>
+    <div class="plan-name">Pro</div>
+    <div class="plan-price">$39 <span>/month</span></div>
+    <div class="plan-desc">Everything you need to pass.</div>
+    <ul class="plan-features">
+      <li><span class="check">✓</span> Unlimited practice questions</li>
+      <li><span class="check">✓</span> Full mock exams with scoring</li>
+      <li><span class="check">✓</span> Detailed explanations + references</li>
+      <li><span class="check">✓</span> Video lectures (all topics)</li>
+      <li><span class="check">✓</span> Weak area analysis dashboard</li>
+      <li><span class="check">✓</span> 7-day free trial</li>
+    </ul>
+  </div>
+
+  <div class="plan-card" onclick="openModal('signup')">
+    <div class="plan-name">Bundle</div>
+    <div class="plan-price">$59 <span>/month</span></div>
+    <div class="plan-desc">For serious candidates.</div>
+    <ul class="plan-features">
+      <li><span class="check">✓</span> Everything in Pro</li>
+      <li><span class="check">✓</span> Live group study sessions</li>
+      <li><span class="check">✓</span> 1-on-1 tutoring (2h/month)</li>
+      <li><span class="check">✓</span> Course books included</li>
+    </ul>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+  <h2 class="cta-title">Ready to pass your PEBC?</h2>
+  <p class="cta-sub">Join hundreds of pharmacists who chose PharmAce.</p>
+  <button class="btn btn-gold" onclick="openModal('signup')">Create your free account</button>
+</section>
+
+<footer class="footer">
+  <p>© 2025 PharmAce · Built for Canadian pharmacy candidates</p>
+  <p style="margin-top:6px;"><a href="quiz.html" style="color:var(--text3);">Quiz</a> · <a href="admin.html" style="color:var(--text3);">Admin</a></p>
+</footer>
+
+<!-- SIGNUP / LOGIN MODAL -->
+<div class="modal-overlay" id="modal" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-tabs">
+      <div class="modal-tab active" onclick="switchModalTab('signup')">Sign up</div>
+      <div class="modal-tab" onclick="switchModalTab('login')">Sign in</div>
+    </div>
+
+    <div class="modal-form active" id="mf-signup">
+      <div class="form-group"><label>Full name</label><input type="text" placeholder="Dr. Sarah Nguyen" /></div>
+      <div class="form-group"><label>Email address</label><input type="email" placeholder="sarah@email.com" /></div>
+      <div class="form-group"><label>Password</label><input type="password" placeholder="Min. 8 characters" /></div>
+      <div class="form-group">
+        <label>Exam target</label>
+        <select>
+          <option>PEBC Evaluating Exam (EE)</option>
+          <option>PEBC Qualifying Exam Part I (QE)</option>
+          <option>PEBC Pharmacy Technician Exam</option>
+          <option>OCP Ontario Jurisprudence Exam</option>
+        </select>
+      </div>
+      <button class="btn btn-gold" onclick="goToQuiz()">Create account — it's free</button>
+      <div class="modal-footer">No credit card required · Cancel anytime</div>
+    </div>
+
+    <div class="modal-form" id="mf-login">
+      <div class="form-group"><label>Email address</label><input type="email" placeholder="sarah@email.com" /></div>
+      <div class="form-group"><label>Password</label><input type="password" placeholder="Your password" /></div>
+      <button class="btn btn-gold" onclick="goToQuiz()">Sign in</button>
+      <div class="modal-footer"><a href="#" style="color:var(--text3);">Forgot password?</a></div>
+    </div>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+<script>
+  function openModal(tab) {
+    document.getElementById('modal').classList.add('open');
+    switchModalTab(tab || 'signup');
+  }
+  function closeModalOutside(e) {
+    if (e.target === document.getElementById('modal')) document.getElementById('modal').classList.remove('open');
+  }
+  function switchModalTab(tab) {
+    document.querySelectorAll('.modal-tab').forEach((t,i) => t.classList.toggle('active', (i===0&&tab==='signup')||(i===1&&tab==='login')));
+    document.getElementById('mf-signup').classList.toggle('active', tab==='signup');
+    document.getElementById('mf-login').classList.toggle('active', tab==='login');
+  }
+  function goToQuiz() { window.location.href = 'quiz.html'; }
+</script>
+</body>
+</html>
