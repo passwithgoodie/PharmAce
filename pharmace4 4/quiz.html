@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0"/>
+  <meta name="theme-color" content="#ffffff"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="PharmAce"/>
+  <title>PharmAce – Quiz</title>
+  <link rel="manifest" href="manifest.json"/>
+  <link rel="stylesheet" href="css/style.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // Auth gate — runs before page loads
+    const _sb = supabase.createClient(
+      'https://eydptsrijgniulalemhb.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5ZHB0c3JpamduaXVsYWxlbWhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4MDY3NzEsImV4cCI6MjA5NDM4Mjc3MX0.eG32nRcGJZ0phUZB-u3JJoHrer_9gWhZEQ2zd7FrlgU'
+    );
+    (async () => {
+      const { data: { session } } = await _sb.auth.getSession();
+      // Allow guests (no session) through
+      if (!session) return;
+      // Check role for logged-in users
+      const { data: profile } = await _sb.from('profiles').select('role').eq('id', session.user.id).single();
+      if (profile && (profile.role === 'pending' || profile.role === 'revoked')) {
+        window.location.href = 'index.html';
+      }
+      // Store role for admin link
+      if (profile) window._userRole = profile.role;
+    })();
+  </script>
+  <style>
+    /* HOME SCREEN */
+    .home-hero { background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%); padding: 1.25rem 1.1rem 1.1rem; }
+    .greeting { font-size: 13px; color: var(--text2); margin-bottom: 3px; }
+    .home-title { font-family: 'Lora', serif; font-size: 1.7rem; color: var(--text); }
+    .home-title span { color: var(--blue); font-style: italic; }
+
+    .streak-bar { display: flex; align-items: center; justify-content: space-between; background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 0.9rem 1.1rem; margin: 1rem 1.1rem 0; box-shadow: var(--shadow); }
+    .streak-num { font-family: 'Lora', serif; font-size: 2.2rem; color: var(--blue); }
+    .streak-label { font-size: 12px; color: var(--text2); margin-top: 1px; }
+
+    .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; padding: 0 1.1rem; margin-top: 1rem; }
+    .mode-card { background: #fff; border: 1.5px solid var(--border); border-radius: var(--radius); padding: 1.05rem; cursor: pointer; transition: all 0.18s; box-shadow: var(--shadow); }
+    .mode-card:hover { border-color: var(--blue-mid); transform: translateY(-1px); }
+    .mode-card.blue { border-top: 3px solid var(--blue); }
+    .mode-card.green { border-top: 3px solid var(--green); }
+    .mode-card.amber { border-top: 3px solid var(--amber); }
+    .mode-card.purple { border-top: 3px solid var(--purple); }
+    .mode-icon { font-size: 1.6rem; margin-bottom: 5px; display: block; }
+    .mode-name { font-size: 13px; font-weight: 700; color: var(--text); }
+    .mode-desc { font-size: 11px; color: var(--text3); margin-top: 2px; line-height: 1.4; }
+
+    .home-section { padding: 1.25rem 1.1rem 0; }
+    .home-section-title { font-size: 12px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.75rem; }
+
+    .topic-chips { display: flex; gap: 7px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+    .topic-chips::-webkit-scrollbar { display: none; }
+
+    .recent-list { display: flex; flex-direction: column; gap: 8px; }
+    .recent-item { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.85rem 1rem; display: flex; align-items: center; gap: 11px; box-shadow: var(--shadow); }
+    .recent-icon { font-size: 1.3rem; }
+    .recent-name { font-size: 13px; font-weight: 600; color: var(--text); }
+    .recent-sub { font-size: 11px; color: var(--text3); }
+    .recent-pct { font-size: 14px; font-weight: 700; margin-left: auto; }
+
+    /* QUIZ SCREEN */
+    .quiz-topbar { background: #fff; border-bottom: 1px solid var(--border); padding: 0.9rem 1.1rem; display: flex; align-items: center; gap: 12px; }
+    .back-btn { background: none; border: none; color: var(--text2); font-size: 20px; cursor: pointer; padding: 2px 6px 2px 0; line-height: 1; }
+    .timer { font-size: 13px; font-weight: 700; color: var(--text2); }
+    .timer.warn { color: var(--red); }
+    .q-counter { font-size: 12px; font-weight: 600; color: var(--text3); }
+
+    .q-meta { display: flex; gap: 7px; flex-wrap: wrap; padding: 1rem 1.1rem 0.5rem; }
+    .q-body { padding: 0 1.1rem; }
+    .q-stem { font-family: 'Lora', serif; font-size: 1.05rem; line-height: 1.65; color: var(--text); margin-bottom: 1.25rem; }
+
+    .options { display: flex; flex-direction: column; gap: 9px; margin-bottom: 1rem; }
+    .opt { background: #fff; border: 1.5px solid var(--border); border-radius: var(--radius); padding: 0.9rem 1rem; cursor: pointer; display: flex; gap: 11px; align-items: flex-start; transition: all 0.15s; box-shadow: var(--shadow); }
+    .opt:hover:not(.disabled) { border-color: var(--blue-mid); background: var(--blue-light); }
+    .opt.selected { border-color: var(--blue); background: var(--blue-light); }
+    .opt.correct { border-color: var(--green); background: var(--green-light); }
+    .opt.wrong { border-color: var(--red); background: var(--red-light); }
+    .opt.disabled { cursor: default; }
+    .opt-letter { width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid var(--border2); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--text3); flex-shrink: 0; margin-top: 1px; }
+    .opt.selected .opt-letter { border-color: var(--blue); color: var(--blue); background: var(--blue-light); }
+    .opt.correct .opt-letter { border-color: var(--green); color: var(--green); background: var(--green-mid); }
+    .opt.wrong .opt-letter { border-color: var(--red); color: var(--red); background: #fecaca; }
+    .opt-text { font-size: 14px; line-height: 1.5; color: var(--text); padding-top: 2px; }
+
+    .exp-box { background: var(--green-light); border-left: 3px solid var(--green); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; padding: 0.9rem 1rem; margin-bottom: 1rem; display: none; }
+    .exp-box.visible { display: block; }
+    .exp-label { font-size: 11px; font-weight: 700; color: var(--green); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.4rem; }
+    .exp-text { font-size: 13px; color: #166534; line-height: 1.6; margin-bottom: 0.4rem; }
+    .exp-ref { font-size: 11px; color: #4ade80; font-style: italic; color: #15803d; }
+
+    .quiz-footer { padding: 0.85rem 1.1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; background: #fff; border-top: 1px solid var(--border); }
+    .flag-btn { background: none; border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 8px 14px; color: var(--text2); font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .flag-btn.flagged { border-color: var(--amber); color: var(--amber); }
+
+    /* RESULT SCREEN */
+    .result-hero { background: linear-gradient(135deg, #eff6ff, #f0fdf4); padding: 2rem 1.1rem 1.5rem; text-align: center; }
+    .score-ring { width: 110px; height: 110px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; position: relative; border: 6px solid var(--blue-mid); }
+    .score-ring.pass { border-color: var(--green-mid); }
+    .score-pct { font-family: 'Lora', serif; font-size: 2rem; color: var(--text); }
+    .result-msg { font-family: 'Lora', serif; font-size: 1.3rem; color: var(--text); margin-bottom: 0.35rem; font-style: italic; }
+    .result-sub { font-size: 13px; color: var(--text2); }
+
+    /* DASHBOARD */
+    .dash-hero { background: linear-gradient(135deg, #eff6ff, #f0fdf4); padding: 1.5rem 1.1rem 1.25rem; }
+    .dash-title { font-family: 'Lora', serif; font-size: 1.5rem; color: var(--text); }
+    .dash-sub { font-size: 13px; color: var(--text2); margin-top: 3px; }
+    .topic-row { display: flex; align-items: center; gap: 10px; padding: 0.8rem 1.1rem; border-bottom: 1px solid var(--border); }
+    .topic-name { font-size: 13px; font-weight: 500; color: var(--text); flex: 1; }
+    .topic-bar-bg { width: 80px; height: 5px; background: var(--bg3); border-radius: 3px; }
+    .topic-bar-fill { height: 100%; border-radius: 3px; }
+    .topic-pct { font-size: 13px; font-weight: 700; width: 38px; text-align: right; }
+  </style>
+</head>
+<body>
+
+<!-- HOME SCREEN -->
+<div id="screen-home" class="screen active">
+  <div style="background:#fff;border-bottom:1px solid var(--border);padding:0.75rem 1.1rem;display:flex;align-items:center;justify-content:space-between;"><div style="font-family:Lora,serif;font-size:18px;font-style:italic;color:var(--blue);font-weight:600;">PharmAce</div><div style="display:flex;gap:8px;"><button id="admin-link" onclick="window.location.href='users.html'" style="display:none;font-size:11px;font-weight:700;padding:5px 11px;border-radius:8px;background:var(--blue-light);color:var(--blue);border:1px solid var(--blue-mid);cursor:pointer;font-family:Plus Jakarta Sans,sans-serif;">👤 Users</button><button onclick="signOutUser()" style="font-size:11px;font-weight:700;padding:5px 11px;border-radius:8px;background:var(--bg2);color:var(--text2);border:1px solid var(--border);cursor:pointer;font-family:Plus Jakarta Sans,sans-serif;">Sign out</button></div></div>
+  <div class="home-hero">
+    <div class="greeting" id="greeting">Good morning 👋</div>
+    <div class="home-title">Ready to <span>study?</span></div>
+  </div>
+
+  <div class="streak-bar">
+    <div>
+      <div class="streak-num">3</div>
+      <div class="streak-label">day streak — keep it up!</div>
+    </div>
+    <div style="font-size:2.2rem;">🔥</div>
+  </div>
+
+  <div class="home-section" style="margin-top:1rem;">
+    <div class="home-section-title">Stats</div>
+    <div class="stat-grid">
+      <div class="stat-card"><span class="stat-val" style="color:var(--blue);">127</span><div class="stat-label">Done</div></div>
+      <div class="stat-card"><span class="stat-val" style="color:var(--green);">68%</span><div class="stat-label">Avg score</div></div>
+      <div class="stat-card"><span class="stat-val" style="color:var(--amber);">3🔥</span><div class="stat-label">Streak</div></div>
+    </div>
+  </div>
+
+  <div class="home-section" style="margin-top:1.1rem;">
+    <div class="home-section-title">Study mode</div>
+    <div class="mode-grid">
+      <div class="mode-card blue" onclick="startQuiz('practice')">
+        <span class="mode-icon">📝</span>
+        <div class="mode-name">Practice</div>
+        <div class="mode-desc">Untimed, with full explanations</div>
+      </div>
+      <div class="mode-card green" onclick="startQuiz('mock')">
+        <span class="mode-icon">⏱️</span>
+        <div class="mode-name">Mock Exam</div>
+        <div class="mode-desc">Timed, full exam mode</div>
+      </div>
+      <div class="mode-card amber" onclick="startQuiz('weak')">
+        <span class="mode-icon">🎯</span>
+        <div class="mode-name">Weak Areas</div>
+        <div class="mode-desc">Focus on your gaps</div>
+      </div>
+      <div class="mode-card purple" onclick="showScreen('screen-dash');setNav('nav-dash')">
+        <span class="mode-icon">📊</span>
+        <div class="mode-name">Progress</div>
+        <div class="mode-desc">Track your performance</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="home-section" style="margin-top:1.1rem;">
+    <div class="home-section-title">Topics</div>
+    <div class="topic-chips" id="topic-chips"></div>
+  </div>
+
+  <div class="home-section" style="margin-top:1.1rem; padding-bottom:90px;">
+    <div class="home-section-title">Recent sessions</div>
+    <div class="recent-list">
+      <div class="recent-item"><span class="recent-icon">💊</span><div><div class="recent-name">Cardiology</div><div class="recent-sub">10 questions · Cardiology</div></div><div class="recent-pct" style="color:var(--green);">82%</div></div>
+      <div class="recent-item"><span class="recent-icon">🧬</span><div><div class="recent-name">Endocrinology</div><div class="recent-sub">10 questions · Endocrinology</div></div><div class="recent-pct" style="color:var(--amber);">64%</div></div>
+      <div class="recent-item"><span class="recent-icon">🦠</span><div><div class="recent-name">Infectious Disease</div><div class="recent-sub">8 questions · Infectious Disease</div></div><div class="recent-pct" style="color:var(--red);">48%</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- QUIZ SCREEN -->
+<div id="screen-quiz" class="screen">
+  <div class="quiz-topbar">
+    <button class="back-btn" onclick="confirmExit()">←</button>
+    <div class="prog-track" style="flex:1;"><div class="prog-fill" id="qprog" style="width:0%"></div></div>
+    <div class="q-counter" id="q-counter">1 / 10</div>
+    <div class="timer" id="timer"></div>
+  </div>
+
+  <div class="q-meta">
+    <span class="badge badge-blue" id="q-topic">Cardiology</span>
+    <span class="badge badge-amber" id="q-diff">Intermediate</span>
+  </div>
+
+  <div class="q-body content pb-nav">
+    <p class="q-stem" id="q-stem"></p>
+    <div class="options" id="options"></div>
+    <div class="exp-box" id="exp-box">
+      <div class="exp-label">✓ Explanation</div>
+      <p class="exp-text" id="exp-text"></p>
+      <p class="exp-ref" id="exp-ref"></p>
+    </div>
+  </div>
+
+  <div class="quiz-footer">
+    <button class="flag-btn" id="flag-btn" onclick="toggleFlag()">🚩 Flag</button>
+    <button class="btn btn-blue" id="next-btn" style="width:auto;padding:10px 22px;" onclick="nextQ()" disabled>Next →</button>
+  </div>
+</div>
+
+<!-- RESULT SCREEN -->
+<div id="screen-result" class="screen">
+  <div class="result-hero">
+    <div class="score-ring" id="score-ring">
+      <div class="score-pct" id="score-pct">0%</div>
+    </div>
+    <div class="result-msg" id="result-msg">Well done!</div>
+    <div class="result-sub" id="result-sub">8 of 10 correct</div>
+  </div>
+
+  <div class="content" style="padding-top:1.25rem;">
+    <div class="stat-grid" style="margin-bottom:1.25rem;">
+      <div class="stat-card"><span class="stat-val" id="r-correct" style="color:var(--green);">0</span><div class="stat-label">Correct</div></div>
+      <div class="stat-card"><span class="stat-val" id="r-wrong" style="color:var(--red);">0</span><div class="stat-label">Wrong</div></div>
+      <div class="stat-card"><span class="stat-val" id="r-flagged" style="color:var(--amber);">0</span><div class="stat-label">Flagged</div></div>
+    </div>
+
+    <div style="margin-bottom:1.25rem;">
+      <div class="home-section-title" style="margin-bottom:0.75rem;">Suggested next</div>
+      <div id="suggestions"></div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:9px;padding-bottom:90px;">
+      <button class="btn btn-blue" onclick="startQuiz(currentMode)">Retry this set</button>
+      <button class="btn btn-outline" onclick="showScreen('screen-home');setNav('nav-home')">Back to home</button>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD SCREEN -->
+<div id="screen-dash" class="screen">
+  <div class="dash-hero">
+    <div class="dash-title">Your progress</div>
+    <div class="dash-sub">Based on your last 30 sessions</div>
+  </div>
+  <div class="content" style="padding-top:1.25rem;padding-bottom:90px;">
+    <div class="stat-grid" style="margin-bottom:1.5rem;">
+      <div class="stat-card"><span class="stat-val">127</span><div class="stat-label">Questions</div></div>
+      <div class="stat-card"><span class="stat-val" style="color:var(--blue);">68%</span><div class="stat-label">Avg score</div></div>
+      <div class="stat-card"><span class="stat-val">3</span><div class="stat-label">Streak</div></div>
+    </div>
+    <div class="home-section-title" style="margin-bottom:0.6rem;">Performance by topic</div>
+  </div>
+  <div id="topic-rows"></div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <button class="nav-btn active" id="nav-home" onclick="showScreen('screen-home');setNav('nav-home')">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    Home
+  </button>
+  <button class="nav-btn" id="nav-quiz" onclick="startQuiz('practice');setNav('nav-quiz')">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    Quiz
+  </button>
+  <button class="nav-btn" id="nav-dash" onclick="showScreen('screen-dash');setNav('nav-dash')">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    Progress
+  </button>
+  <button class="nav-btn" id="nav-more" onclick="window.location.href='index.html'">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+    More
+  </button>
+</nav>
+
+<script src="js/questions.js"></script>
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+let currentMode = 'practice';
+let quizQs = [], currentQ = 0, correct = 0, wrong = 0, flaggedCount = 0;
+let answered = false, isFlagged = false, timerInterval = null, timeLeft = 0;
+
+const TOPIC_DATA = [
+  {name:'Cardiology', pct:82, color:'var(--green)'}, {name:'Anticoagulation', pct:75, color:'var(--green)'},
+  {name:'Infectious disease', pct:48, color:'var(--red)'}, {name:'Endocrinology', pct:64, color:'var(--amber)'},
+  {name:'Psychiatry', pct:71, color:'var(--amber)'}, {name:'Pharmacokinetics', pct:55, color:'var(--amber)'},
+  {name:'Vaccines', pct:88, color:'var(--green)'}, {name:'Respirology', pct:42, color:'var(--red)'},
+  {name:'Women\'s health', pct:60, color:'var(--amber)'}, {name:'Pharmacy practice', pct:78, color:'var(--green)'},
+  {name:'Rheumatology', pct:50, color:'var(--amber)'}, {name:'Dermatology', pct:65, color:'var(--amber)'},
+  {name:'Neurology', pct:58, color:'var(--amber)'}, {name:'Pharmacology', pct:72, color:'var(--green)'},
+];
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  // greeting
+  const h = new Date().getHours();
+  const g = h < 12 ? 'Good morning 👋' : h < 17 ? 'Good afternoon 👋' : 'Good evening 👋';
+  const el = document.getElementById('greeting'); if(el) el.textContent = g;
+
+  // topic chips
+  const chips = document.getElementById('topic-chips');
+  if(chips) {
+    ['All topics',...new Set(QUESTION_BANK.map(q=>q.topic))].forEach((t,i) => {
+      const c = document.createElement('button');
+      c.className = 'chip' + (i===0?' active':'');
+      c.textContent = t;
+      c.onclick = () => { document.querySelectorAll('.topic-chips .chip').forEach(x=>x.classList.remove('active')); c.classList.add('active'); };
+      chips.appendChild(c);
+    });
+  }
+
+  // dashboard topic rows
+  const rows = document.getElementById('topic-rows');
+  if(rows) {
+    rows.innerHTML = TOPIC_DATA.map(t => `
+      <div class="topic-row">
+        <span class="topic-name">${t.name}</span>
+        <div class="topic-bar-bg"><div class="topic-bar-fill" style="width:${t.pct}%;background:${t.color};"></div></div>
+        <span class="topic-pct" style="color:${t.color};">${t.pct}%</span>
+      </div>`).join('');
+  }
+});
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+function setNav(id) {
+  document.querySelectorAll('.nav-btn').forEach(n => n.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ── Quiz Engine ───────────────────────────────────────────────────────────────
+function startQuiz(mode) {
+  const isGuest = !window._userRole;
+  const GUEST_LIMIT = 3;
+  currentMode = mode; currentQ = 0; correct = 0; wrong = 0; flaggedCount = 0;
+  answered = false; isFlagged = false;
+  if(timerInterval) clearInterval(timerInterval);
+
+  // Pick questions based on mode
+  const weakTopics = TOPIC_DATA.filter(t=>t.pct<60).map(t=>t.name);
+  if(mode === 'weak') {
+    quizQs = QUESTION_BANK.filter(q => weakTopics.includes(q.topic)).sort(()=>Math.random()-0.5).slice(0, isGuest ? GUEST_LIMIT : 10);
+    if(quizQs.length < 3) quizQs = QUESTION_BANK.sort(()=>Math.random()-0.5).slice(0, isGuest ? GUEST_LIMIT : 10);
+  } else {
+    const activeTopic = document.querySelector('.topic-chips .chip.active')?.textContent;
+    if(activeTopic && activeTopic !== 'All topics') {
+      quizQs = QUESTION_BANK.filter(q=>q.topic===activeTopic).sort(()=>Math.random()-0.5).slice(0, isGuest ? GUEST_LIMIT : 999);
+    } else {
+      quizQs = [...QUESTION_BANK].sort(()=>Math.random()-0.5).slice(0, isGuest ? GUEST_LIMIT : 10);
+    }
+  }
+
+  if(mode === 'mock') {
+    timeLeft = quizQs.length * 90;
+    updateTimer();
+    timerInterval = setInterval(() => { timeLeft--; updateTimer(); if(timeLeft<=0){clearInterval(timerInterval);showResults();} }, 1000);
+  } else {
+    document.getElementById('timer').textContent = '';
+  }
+
+  showScreen('screen-quiz'); setNav('nav-quiz');
+  loadQ();
+}
+
+function updateTimer() {
+  const el = document.getElementById('timer');
+  const m = Math.floor(timeLeft/60), s = timeLeft%60;
+  el.textContent = `${m}:${s.toString().padStart(2,'0')}`;
+  el.className = 'timer' + (timeLeft < 60 ? ' warn' : '');
+}
+
+function loadQ() {
+  if(currentQ >= quizQs.length) { showResults(); return; }
+  answered = false; isFlagged = false;
+  const q = quizQs[currentQ];
+  document.getElementById('q-stem').textContent = q.stem;
+  document.getElementById('q-topic').textContent = q.topic;
+  document.getElementById('q-diff').textContent = q.difficulty;
+  document.getElementById('q-counter').textContent = `${currentQ+1} / ${quizQs.length}`;
+  document.getElementById('qprog').style.width = `${(currentQ/quizQs.length)*100}%`;
+
+  const opts = document.getElementById('options');
+  opts.innerHTML = '';
+  q.options.forEach((opt,i) => {
+    const el = document.createElement('div');
+    el.className = 'opt';
+    el.innerHTML = `<div class="opt-letter">${'ABCD'[i]}</div><div class="opt-text">${opt}</div>`;
+    el.onclick = () => selectOpt(i, el);
+    opts.appendChild(el);
+  });
+
+  document.getElementById('exp-box').classList.remove('visible');
+  document.getElementById('next-btn').disabled = true;
+  const fb = document.getElementById('flag-btn');
+  fb.className = 'flag-btn'; fb.textContent = '🚩 Flag';
+}
+
+function selectOpt(idx, el) {
+  if(answered) return;
+  answered = true;
+  const q = quizQs[currentQ];
+  document.querySelectorAll('.opt').forEach(o => o.classList.add('disabled'));
+
+  if(idx === q.correct) { el.classList.add('correct'); correct++; }
+  else { el.classList.add('wrong'); document.querySelectorAll('.opt')[q.correct].classList.add('correct'); wrong++; }
+
+  if(currentMode !== 'mock') {
+    document.getElementById('exp-text').textContent = q.explanation;
+    document.getElementById('exp-ref').textContent = '📖 ' + q.ref;
+    document.getElementById('exp-box').classList.add('visible');
+  }
+  document.getElementById('next-btn').disabled = false;
+}
+
+function nextQ() { currentQ++; loadQ(); }
+
+function toggleFlag() {
+  isFlagged = !isFlagged;
+  if(isFlagged) flaggedCount++;
+  const fb = document.getElementById('flag-btn');
+  fb.textContent = isFlagged ? '🚩 Flagged' : '🚩 Flag';
+  fb.className = 'flag-btn' + (isFlagged ? ' flagged' : '');
+}
+
+function confirmExit() {
+  if(currentQ > 0) { if(confirm('Exit quiz? Progress will be lost.')) { if(timerInterval) clearInterval(timerInterval); showScreen('screen-home'); setNav('nav-home'); } }
+  else { showScreen('screen-home'); setNav('nav-home'); }
+}
+
+function showResults() {
+  if(timerInterval) clearInterval(timerInterval);
+  const total = quizQs.length, pct = Math.round((correct/total)*100);
+  showScreen('screen-result');
+
+  const ring = document.getElementById('score-ring');
+  ring.className = 'score-ring' + (pct >= 70 ? ' pass' : '');
+  document.getElementById('score-pct').textContent = pct + '%';
+  document.getElementById('r-correct').textContent = correct;
+  document.getElementById('r-wrong').textContent = wrong;
+  document.getElementById('r-flagged').textContent = flaggedCount;
+
+  let msg = pct >= 80 ? 'Excellent work!' : pct >= 65 ? 'Good effort.' : 'Keep going.';
+  let sub = pct >= 80 ? "You're on track for the PEBC." : pct >= 65 ? 'Review explanations and keep practising.' : 'Consistent daily practice is the key.';
+  document.getElementById('result-msg').textContent = msg;
+  document.getElementById('result-sub').textContent = `${correct} of ${total} correct — ${sub}`;
+
+  const sug = document.getElementById('suggestions');
+  const isGuest = !window._userRole;
+
+  if (isGuest) {
+    sug.innerHTML = `
+      <div style="background:linear-gradient(135deg,#eff6ff,#f0fdf4);border:1.5px solid var(--blue-mid);border-radius:var(--radius);padding:1.25rem;text-align:center;margin-bottom:8px;">
+        <div style="font-size:1.75rem;margin-bottom:0.5rem;">🔐</div>
+        <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:0.35rem;">You've used your 3 guest questions</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:1rem;line-height:1.5;">Create a free account to unlock the full question bank, mock exams, and progress tracking.</div>
+        <button onclick="window.location.href='index.html';" style="width:100%;background:var(--blue);color:#fff;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;">Create free account →</button>
+      </div>`;
+    return;
+  }
+
+  const weakTopics = [...new Set(quizQs.filter((_,i)=> i >= correct).map(q=>q.topic))].slice(0,2);
+  sug.innerHTML = weakTopics.length ? weakTopics.map(t =>
+    `<div class="card" style="margin-bottom:8px;display:flex;align-items:center;gap:10px;cursor:pointer;" onclick="startQuiz('practice')">
+      <span style="font-size:1.25rem;">📖</span>
+      <div><div style="font-size:13px;font-weight:600;">${t}</div><div style="font-size:12px;color:var(--text3);">Practise this topic</div></div>
+      <span style="margin-left:auto;color:var(--text3);">→</span>
+    </div>`).join('') :
+    '<p style="font-size:13px;color:var(--text2);">Great job — no weak areas detected!</p>';
+}
+
+// Show admin link if admin
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    if (window._userRole === 'admin') {
+      const al = document.getElementById('admin-link');
+      if (al) al.style.display = 'block';
+    }
+  }, 800);
+});
+
+async function signOutUser() {
+  await _sb.auth.signOut();
+  window.location.href = 'index.html';
+}
+
+// PWA
+if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
+</script>
+</body>
+</html>
