@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0"/>
+  <meta name="theme-color" content="#ffffff"/>
+  <title>PharmAce – User Management</title>
+  <link rel="stylesheet" href="css/style.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { background:var(--bg2); }
+    .top-bar { background:#fff; border-bottom:1px solid var(--border); padding:1rem 1.1rem; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:10; }
+    .top-title { font-family:'Lora',serif; font-size:18px; font-style:italic; color:var(--blue); font-weight:600; }
+    .top-right { display:flex; gap:8px; align-items:center; }
+
+    .filter-bar { display:flex; gap:7px; padding:1rem 1.1rem 0.5rem; overflow-x:auto; scrollbar-width:none; }
+    .filter-bar::-webkit-scrollbar { display:none; }
+
+    .user-list { padding:0 1.1rem 2rem; display:flex; flex-direction:column; gap:9px; }
+
+    .user-card { background:#fff; border:1.5px solid var(--border); border-radius:var(--radius); padding:1.1rem; box-shadow:var(--shadow); }
+    .user-card.pending { border-left:3px solid var(--amber); }
+    .user-card.approved { border-left:3px solid var(--green); }
+    .user-card.revoked { border-left:3px solid var(--red); opacity:0.7; }
+    .user-card.admin { border-left:3px solid var(--blue); }
+
+    .user-top { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:0.6rem; }
+    .user-name { font-size:14px; font-weight:700; color:var(--text); }
+    .user-email { font-size:12px; color:var(--text3); margin-top:2px; }
+    .user-exam { font-size:11px; color:var(--text2); margin-top:3px; }
+    .user-date { font-size:11px; color:var(--text3); margin-top:2px; }
+
+    .user-actions { display:flex; gap:7px; margin-top:0.85rem; flex-wrap:wrap; }
+
+    .action-btn { font-size:12px; font-weight:700; padding:7px 14px; border-radius:8px; border:none; cursor:pointer; font-family:'Plus Jakarta Sans',sans-serif; transition:all 0.15s; }
+    .btn-approve { background:var(--green-light); color:var(--green); border:1px solid var(--green-mid); }
+    .btn-approve:hover { background:var(--green-mid); }
+    .btn-revoke { background:var(--red-light); color:var(--red); border:1px solid #fecaca; }
+    .btn-revoke:hover { background:#fecaca; }
+    .btn-restore { background:var(--blue-light); color:var(--blue); border:1px solid var(--blue-mid); }
+    .btn-restore:hover { background:var(--blue-mid); }
+    .btn-delete { background:var(--bg2); color:var(--text3); border:1px solid var(--border); }
+    .btn-delete:hover { color:var(--red); border-color:var(--red); }
+
+    .empty { text-align:center; padding:3rem 1rem; color:var(--text3); font-size:14px; }
+    .count-badge { font-size:11px; font-weight:700; padding:2px 8px; border-radius:20px; background:var(--amber-light); color:var(--amber); }
+
+    .stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; padding:0.85rem 1.1rem; }
+    .stat-mini { background:#fff; border:1px solid var(--border); border-radius:10px; padding:0.75rem 0.5rem; text-align:center; }
+    .stat-mini-val { font-size:20px; font-weight:700; color:var(--text); display:block; }
+    .stat-mini-label { font-size:10px; color:var(--text3); }
+
+    .not-admin { text-align:center; padding:3rem 1.5rem; }
+    .not-admin-icon { font-size:3rem; margin-bottom:1rem; display:block; }
+
+    .search-wrap { padding:0 1.1rem 0.5rem; }
+    .search-input { width:100%; background:#fff; border:1.5px solid var(--border); border-radius:10px; color:var(--text); font-family:'Plus Jakarta Sans',sans-serif; font-size:14px; padding:10px 13px; }
+    .search-input:focus { outline:none; border-color:var(--blue); }
+  </style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div class="top-title">PharmAce</div>
+  <div class="top-right">
+    <span class="badge badge-blue" style="font-size:10px;">ADMIN</span>
+    <button class="btn btn-ghost btn-sm" onclick="window.location.href='quiz.html'" style="width:auto;padding:6px 12px;font-size:12px;">← Back</button>
+  </div>
+</div>
+
+<!-- NOT ADMIN STATE -->
+<div id="not-admin" style="display:none;">
+  <div class="not-admin">
+    <span class="not-admin-icon">🔒</span>
+    <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:0.5rem;">Admin access only</div>
+    <div style="font-size:14px;color:var(--text2);">You need admin privileges to view this page.</div>
+    <button class="btn btn-blue" style="margin-top:1.5rem;width:auto;padding:10px 24px;" onclick="window.location.href='quiz.html'">Go to quiz</button>
+  </div>
+</div>
+
+<!-- MAIN ADMIN CONTENT -->
+<div id="admin-content" style="display:none;">
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-mini"><span class="stat-mini-val" id="count-all">0</span><div class="stat-mini-label">Total</div></div>
+    <div class="stat-mini"><span class="stat-mini-val" id="count-pending" style="color:var(--amber);">0</span><div class="stat-mini-label">Pending</div></div>
+    <div class="stat-mini"><span class="stat-mini-val" id="count-approved" style="color:var(--green);">0</span><div class="stat-mini-label">Approved</div></div>
+    <div class="stat-mini"><span class="stat-mini-val" id="count-revoked" style="color:var(--red);">0</span><div class="stat-mini-label">Revoked</div></div>
+  </div>
+
+  <!-- SEARCH -->
+  <div class="search-wrap">
+    <input class="search-input" type="text" placeholder="🔍  Search by name or email..." id="search-input" oninput="filterUsers()"/>
+  </div>
+
+  <!-- FILTER TABS -->
+  <div class="filter-bar">
+    <button class="chip active" onclick="setFilter('all',this)">All users</button>
+    <button class="chip" onclick="setFilter('pending',this)">⏳ Pending</button>
+    <button class="chip" onclick="setFilter('approved',this)">✅ Approved</button>
+    <button class="chip" onclick="setFilter('revoked',this)">🔒 Revoked</button>
+  </div>
+
+  <!-- USER LIST -->
+  <div class="user-list" id="user-list">
+    <div class="empty">Loading users...</div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://eydptsrijgniulalemhb.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5ZHB0c3JpamduaXVsYWxlbWhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4MDY3NzEsImV4cCI6MjA5NDM4Mjc3MX0.eG32nRcGJZ0phUZB-u3JJoHrer_9gWhZEQ2zd7FrlgU';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let allUsers = [];
+let currentFilter = 'all';
+
+window.addEventListener('DOMContentLoaded', async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { window.location.href = 'index.html'; return; }
+
+  // Check if admin
+  const { data: profile } = await sb.from('profiles').select('role').eq('id', session.user.id).single();
+  if (!profile || profile.role !== 'admin') {
+    document.getElementById('not-admin').style.display = 'block';
+    return;
+  }
+
+  document.getElementById('admin-content').style.display = 'block';
+  await loadUsers();
+});
+
+async function loadUsers() {
+  const { data, error } = await sb.from('profiles').select('*').order('created_at', { ascending: false });
+  if (error) { document.getElementById('user-list').innerHTML = '<div class="empty">Error loading users.</div>'; return; }
+  allUsers = data || [];
+  updateStats();
+  renderUsers();
+}
+
+function updateStats() {
+  document.getElementById('count-all').textContent = allUsers.length;
+  document.getElementById('count-pending').textContent = allUsers.filter(u=>u.role==='pending').length;
+  document.getElementById('count-approved').textContent = allUsers.filter(u=>u.role==='approved').length;
+  document.getElementById('count-revoked').textContent = allUsers.filter(u=>u.role==='revoked').length;
+}
+
+function setFilter(filter, el) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-bar .chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  renderUsers();
+}
+
+function filterUsers() { renderUsers(); }
+
+function renderUsers() {
+  const search = document.getElementById('search-input').value.toLowerCase();
+  let users = allUsers;
+
+  if (currentFilter !== 'all') users = users.filter(u => u.role === currentFilter);
+  if (search) users = users.filter(u =>
+    (u.full_name||'').toLowerCase().includes(search) ||
+    (u.email||'').toLowerCase().includes(search)
+  );
+
+  const list = document.getElementById('user-list');
+  if (!users.length) { list.innerHTML = '<div class="empty">No users found.</div>'; return; }
+
+  list.innerHTML = '';
+  users.forEach(u => {
+    const card = document.createElement('div');
+    card.className = `user-card ${u.role}`;
+    const date = new Date(u.created_at).toLocaleDateString('en-CA', { year:'numeric', month:'short', day:'numeric' });
+    const roleBadge = u.role === 'pending'
+      ? '<span class="badge badge-amber">Pending</span>'
+      : u.role === 'approved'
+      ? '<span class="badge badge-green">Approved</span>'
+      : u.role === 'admin'
+      ? '<span class="badge badge-blue">Admin</span>'
+      : '<span class="badge badge-red">Revoked</span>';
+
+    let actions = '';
+    if (u.role === 'pending') {
+      actions = `<button class="action-btn btn-approve" onclick="updateRole('${u.id}','approved')">✓ Approve</button>
+                 <button class="action-btn btn-revoke" onclick="updateRole('${u.id}','revoked')">✕ Reject</button>`;
+    } else if (u.role === 'approved') {
+      actions = `<button class="action-btn btn-revoke" onclick="updateRole('${u.id}','revoked')">🔒 Revoke access</button>`;
+    } else if (u.role === 'revoked') {
+      actions = `<button class="action-btn btn-restore" onclick="updateRole('${u.id}','approved')">↩ Restore access</button>`;
+    }
+
+    card.innerHTML = `
+      <div class="user-top">
+        <div>
+          <div class="user-name">${u.full_name || 'Unknown'}</div>
+          <div class="user-email">${u.email || ''}</div>
+          <div class="user-exam">${u.exam_target || ''}</div>
+          <div class="user-date">Joined ${date}</div>
+        </div>
+        ${roleBadge}
+      </div>
+      ${actions ? `<div class="user-actions">${actions}</div>` : ''}
+    `;
+    list.appendChild(card);
+  });
+}
+
+async function updateRole(uid, newRole) {
+  const { error } = await sb.from('profiles').update({
+    role: newRole,
+    approved_at: newRole === 'approved' ? new Date().toISOString() : null
+  }).eq('id', uid);
+
+  if (error) { alert('Error updating user. Please try again.'); return; }
+
+  // Update locally
+  const u = allUsers.find(u => u.id === uid);
+  if (u) { u.role = newRole; u.approved_at = newRole === 'approved' ? new Date().toISOString() : null; }
+  updateStats();
+  renderUsers();
+}
+</script>
+</body>
+</html>
